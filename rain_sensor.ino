@@ -1,5 +1,5 @@
 //Using the watchdog timer, sleep for the given number of intervals,
-//Using an ATmega328P at 16MHz and 5V, draws ~6.3µA while sleeping, which
+//Using an ATmega328P at 16MHz and 5V, draws ~6.3ÂµA while sleeping, which
 //is consistent with only the WDT running.
 //
 //Jack Christensen 19 Nov 2013
@@ -55,7 +55,10 @@ void loop(void)
   if (wdtInterrupt) {
     if (++wdtCount >= WDT_INTERVALS) {
       
-      unsigned long totalRain = count * 8;
+      // Rainwise 111 counts 1/100" per tip i.e. 0.01" per tip
+      // Oregon scientific PCR800 (the protocol) reports in 1/1000" per tip
+      // so total rain is just reported as number of tips * 10
+      unsigned long totalRain = count * 10;
       unsigned int rainRate = count;
       pcr800.buildAndSendPacket(rainRate, totalRain);
       wdtCount = 0;
