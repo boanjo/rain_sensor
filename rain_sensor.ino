@@ -23,7 +23,7 @@ Osv3Pcr800Sensor pcr800(2,7,6);
 
 volatile boolean extInterrupt;    //external interrupt flag (rain gauge tip...)
 volatile boolean wdtInterrupt;    //watchdog timer interrupt flag
-volatile int count = 0;
+volatile unsigned long count = 0;
 
 void wakeOnInterrupt ()
 {
