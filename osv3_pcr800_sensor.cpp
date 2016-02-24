@@ -88,8 +88,8 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
     
   // Checksum
   m_packet[12]  |= checksum & 0x0F;
-  m_packet[13]   = (checksum << 4) & 0xF0;
-  
+  m_packet[13] = checksum & 0xF0;
+
   // CRC-8
  // m_packet[14] = calcCrc();
 
