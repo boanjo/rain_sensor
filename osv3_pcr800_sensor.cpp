@@ -23,7 +23,6 @@ Osv3Pcr800Sensor::Osv3Pcr800Sensor(int channel, int transmitterPin, int transmit
   pinMode(m_transmitterPowerPin, OUTPUT);
 
   digitalWrite(m_transmitterPowerPin, LOW);
-  //digitalWrite(m_transmitterPowerPin, HIGH);
   
   initCrc8();
 }
@@ -32,7 +31,7 @@ Osv3Pcr800Sensor::~Osv3Pcr800Sensor()
 {
 }
 
-void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const unsigned long totalRain)
+void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const unsigned long totalRain, const unsigned long batteryPercent)
 {  
   // Nibbles are sent LSB first
 
@@ -56,12 +55,13 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
   m_packet[5] |= m_channel;
 
   // nibbles 5..6 Rolling Code Value changes randomly every time the sensor is reset
-  m_packet[6] = m_rollingCode;
+  // I use the battery level instead
+  m_packet[6] = batteryPercent & 0x7F;
 
   // nibble 7 Flags - battery status
   // my sensor is plugged in, so power is always good
-  m_packet[7] = 0x80;
-
+   m_packet[7] = 0x80;
+   
   // nibble 8..[n-5] Sensor-specific Data
   // Rain Rate (4 nibbles)
   // nibbles 11..8 in 0.01 inches per hour
@@ -77,7 +77,6 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
   m_packet[11]  = ((totalRain / 1000) % 10) << 4;
   m_packet[11] |= (totalRain / 10000) % 10;
   m_packet[12]  = ((totalRain / 100000) % 10) << 4;
-
 
   // Total Rain  (6 nibbles)
   // nibbles 18..13 in 0.001 inches 

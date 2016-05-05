@@ -7,14 +7,18 @@
 
 #include <avr/wdt.h>
 #include <avr/sleep.h>
+#include <avr/eeprom.h>
 #include <util/atomic.h>
 #include "osv3_pcr800_sensor.h"
 
-// Using a Brage SIP lite board (a arduino uno like board)
+#define EE_COUNT_ADDRESS  0   // Select address in EEPROM memory space
+
+#define DEBUG 1
+//#define FIRST_TIME 1
 
 const int RAIN_GAUGE_PIN = 2;           
 const int WDT_INTERVALS = 6;     //number of WDT timeouts before sending result
-const int TX_GND_PIN = 5;        //Connection to gnd to brage
+const int BATTERY_INTERVALS = 10; //number of reporting periods between every new battery read
 
 // Channel (first argument) is hardcoded to not have any extra processing
 // at the time of sending data. A switch could of course be used and only check
@@ -24,6 +28,10 @@ Osv3Pcr800Sensor pcr800(2,7,6);
 volatile boolean extInterrupt;    //external interrupt flag (rain gauge tip...)
 volatile boolean wdtInterrupt;    //watchdog timer interrupt flag
 volatile unsigned long count = 0;
+volatile uint32_t prevStoredCount = 0;
+volatile unsigned long reportingPeriodCount = BATTERY_INTERVALS;
+volatile unsigned long batteryPercent = 0;
+int BATTERY_SENSE_PIN = A0;
 
 void wakeOnInterrupt ()
 {
@@ -35,8 +43,19 @@ void wakeOnInterrupt ()
   
 void setup(void)
 {
-  pinMode(TX_GND_PIN, OUTPUT);
-  digitalWrite(TX_GND_PIN, LOW);
+#ifdef DEBUG
+  Serial.begin(115200);
+#endif
+
+#ifdef FIRST_TIME
+  eeprom_write_dword((uint32_t *)EE_COUNT_ADDRESS, (uint32_t)0);
+#endif
+
+  analogReference(INTERNAL);
+  pinMode(BATTERY_SENSE_PIN, INPUT);
+
+  count = (unsigned long) eeprom_read_dword((const uint32_t *)EE_COUNT_ADDRESS);
+  prevStoredCount = count;
   
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     wdt_reset();
@@ -54,14 +73,35 @@ void loop(void)
   
   if (wdtInterrupt) {
     if (++wdtCount >= WDT_INTERVALS) {
-      
+
+      // measure battery more infrequent than reporting
+      if(reportingPeriodCount >= BATTERY_INTERVALS)
+      {
+         int sensorValue = analogRead(BATTERY_SENSE_PIN);
+         #ifdef DEBUG
+         Serial.println(sensorValue);
+         #endif
+   
+         // 2,7M, 820K divider across battery and using internal ADC ref of 1.1V
+         // ((2,7e6+820e3)/820e3)*1.1 = Vmax = 4,72 Volts
+         // 4,72/1023 = Volts per bit = 0.004615788
+         // float batteryV  = sensorValue * 0.004615788;
+         batteryPercent = sensorValue / 10;
+      }
+
       // Rainwise 111 counts 1/100" per tip i.e. 0.01" per tip
       // Oregon scientific PCR800 (the protocol) reports in 1/1000" per tip
       // so total rain is just reported as number of tips * 10
       unsigned long totalRain = count * 10;
       unsigned int rainRate = count;
-      pcr800.buildAndSendPacket(rainRate, totalRain);
+      pcr800.buildAndSendPacket(rainRate, totalRain, batteryPercent);
       wdtCount = 0;
+
+
+      if(count != prevStoredCount) {
+          eeprom_write_dword((uint32_t *)EE_COUNT_ADDRESS, (uint32_t)count);
+          prevStoredCount = count; 
+      }
     }
   }
   if (extInterrupt) {

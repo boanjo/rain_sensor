@@ -44,7 +44,7 @@ class Osv3Pcr800Sensor
     Osv3Pcr800Sensor(int channel, int transmitterPin, int transmitterPowerPin);
     ~Osv3Pcr800Sensor();
     
-    void buildAndSendPacket(const unsigned int countPerHour, const unsigned long totalCount);
+    void buildAndSendPacket(const unsigned int countPerHour, const unsigned long totalCount, const unsigned long batteryPercent);
   
 };
 
