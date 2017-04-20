@@ -13,7 +13,8 @@
 
 #define EE_COUNT_ADDRESS  0   // Select address in EEPROM memory space
 
-#define DEBUG 1
+// Enabling DEBUG will change the timing
+//#define DEBUG 1
 //#define FIRST_TIME 1
 
 const int RAIN_GAUGE_PIN = 2;           
@@ -57,7 +58,6 @@ void setup(void)
 
   count = (unsigned long) eeprom_read_dword((const uint32_t *)EE_COUNT_ADDRESS);
   prevStoredCount = count;
-  flags = 0;
   
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     wdt_reset();
@@ -72,7 +72,7 @@ void loop(void)
   static int wdtCount;
   
   gotoSleep();
-  
+
   if (wdtInterrupt) {
     if (++wdtCount >= WDT_INTERVALS) {
 
@@ -105,7 +105,11 @@ void loop(void)
       const unsigned int WEIGHT = 4;
       // We report roughly once 52sec so per rate per hour 3600/52=70
       // Then we apply a decay filter. Use the old and new value with a weight 
-      rainRate = (((10 - WEIGHT) * (diff * 70)) + (WEIGHT * prevReportedRainRate)) / 10;
+      unsigned int rainRate = (((10 - WEIGHT) * (diff * 70)) + (WEIGHT * prevReportedRainRate)) / 10;
+      #ifdef DEBUG
+      Serial.print("rainRate=");
+      Serial.println(rainRate);
+      #endif
 
       pcr800.buildAndSendPacket(rainRate, totalRain, batteryLow);
       wdtCount = 0;
