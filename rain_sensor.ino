@@ -28,9 +28,10 @@ Osv3Pcr800Sensor pcr800(2,7,6);
 volatile boolean extInterrupt;    //external interrupt flag (rain gauge tip...)
 volatile boolean wdtInterrupt;    //watchdog timer interrupt flag
 volatile unsigned long count = 0;
+volatile unsigned int prevReportedRainRate = 0;
 volatile uint32_t prevStoredCount = 0;
 volatile unsigned long reportingPeriodCount = BATTERY_INTERVALS;
-volatile unsigned long batteryPercent = 0;
+volatile bool batteryLow = false;
 int BATTERY_SENSE_PIN = A0;
 
 void wakeOnInterrupt ()
@@ -56,6 +57,7 @@ void setup(void)
 
   count = (unsigned long) eeprom_read_dword((const uint32_t *)EE_COUNT_ADDRESS);
   prevStoredCount = count;
+  flags = 0;
   
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     wdt_reset();
@@ -86,17 +88,28 @@ void loop(void)
          // ((2,7e6+820e3)/820e3)*1.1 = Vmax = 4,72 Volts
          // 4,72/1023 = Volts per bit = 0.004615788
          // float batteryV  = sensorValue * 0.004615788;
-         batteryPercent = sensorValue / 10;
+         // batteryPercent = sensorValue / 10;
+
+         if(sensorValue > 820) 
+           batteryLow = false;
+         else 
+           batteryLow = true;
       }
 
       // Rainwise 111 counts 1/100" per tip i.e. 0.01" per tip
       // Oregon scientific PCR800 (the protocol) reports in 1/1000" per tip
       // so total rain is just reported as number of tips * 10
       unsigned long totalRain = count * 10;
-      unsigned int rainRate = count;
-      pcr800.buildAndSendPacket(rainRate, totalRain, batteryPercent);
-      wdtCount = 0;
 
+      unsigned int diff = count - prevStoredCount;
+      const unsigned int WEIGHT = 4;
+      // We report roughly once 52sec so per rate per hour 3600/52=70
+      // Then we apply a decay filter. Use the old and new value with a weight 
+      rainRate = (((10 - WEIGHT) * (diff * 70)) + (WEIGHT * prevReportedRainRate)) / 10;
+
+      pcr800.buildAndSendPacket(rainRate, totalRain, batteryLow);
+      wdtCount = 0;
+      prevReportedRainRate = rainRate;
 
       if(count != prevStoredCount) {
           eeprom_write_dword((uint32_t *)EE_COUNT_ADDRESS, (uint32_t)count);

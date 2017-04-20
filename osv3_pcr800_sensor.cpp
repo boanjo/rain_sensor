@@ -14,16 +14,16 @@ Osv3Pcr800Sensor::Osv3Pcr800Sensor(int channel, int transmitterPin, int transmit
   m_madeTable = false;
   m_transmitterPin = transmitterPin;
   m_transmitterPowerPin = transmitterPowerPin;
-  
+
   // new rolling code with every reset
   randomSeed(analogRead(1)); // analog pin one used as source of noise for random seed
   m_rollingCode = random(0x01, 0xFE);
-  
+
   pinMode(m_transmitterPin, OUTPUT);
   pinMode(m_transmitterPowerPin, OUTPUT);
 
   digitalWrite(m_transmitterPowerPin, LOW);
-  
+
   initCrc8();
 }
 
@@ -31,8 +31,8 @@ Osv3Pcr800Sensor::~Osv3Pcr800Sensor()
 {
 }
 
-void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const unsigned long totalRain, const unsigned long batteryPercent)
-{  
+void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const unsigned long totalRain, const bool batteryLow)
+{
   // Nibbles are sent LSB first
 
   // --- preamble ---
@@ -56,12 +56,14 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
 
   // nibbles 5..6 Rolling Code Value changes randomly every time the sensor is reset
   // I use the battery level instead
-  m_packet[6] = batteryPercent & 0x7F;
+  m_packet[6] = m_rollingCode;
 
-  // nibble 7 Flags - battery status
-  // my sensor is plugged in, so power is always good
-   m_packet[7] = 0x80;
-   
+  // nibble 7 Flags - battery status (Nibble value 0x4 indicates LOW)
+  if(batteryLow)
+    m_packet[7] = 0x4 << 4;
+  else
+    m_packet[7] = 0;
+
   // nibble 8..[n-5] Sensor-specific Data
   // Rain Rate (4 nibbles)
   // nibbles 11..8 in 0.01 inches per hour
@@ -70,7 +72,7 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
   m_packet[8]  = ((rainRate / 10) % 10) << 4;
   m_packet[8] |= (rainRate / 100) % 10;
   m_packet[9]  = ((rainRate / 1000) % 10) << 4;
-  
+
   m_packet[9]  |= (totalRain) % 10;
   m_packet[10]  = ((totalRain / 10) % 10) << 4;
   m_packet[10] |= (totalRain / 100) % 10;
@@ -79,12 +81,12 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
   m_packet[12]  = ((totalRain / 100000) % 10) << 4;
 
   // Total Rain  (6 nibbles)
-  // nibbles 18..13 in 0.001 inches 
-  
+  // nibbles 18..13 in 0.001 inches
+
   // nibbles [n-3]..[n-4] Checksum The 8-bit sum of nibbles 0..[n-5]
-    
+
   unsigned char checksum = calcChecksum();
-    
+
   // Checksum
   m_packet[12]  |= checksum & 0x0F;
   m_packet[13] = checksum & 0xF0;
@@ -120,32 +122,32 @@ unsigned char Osv3Pcr800Sensor::calcCrc()
   // does not include all of byte at index 3 (skip the sync pattern 0xA)
   crc8(&crc, m_packet[3] & 0x0F);
 
-  // includes bytes at indicies 4 through 10, does not include checksum in index 11   
+  // includes bytes at indicies 4 through 10, does not include checksum in index 11
   for (int i=4; i<=10; i++)
   {
      crc8(&crc, m_packet[i]);
   }
 
   // nibble swap
-  return ((crc & 0x0F) << 4) | ((crc & 0xF0) >> 4);;  
+  return ((crc & 0x0F) << 4) | ((crc & 0xF0) >> 4);;
 }
 
 void Osv3Pcr800Sensor::sendData(void)
 {
    int i;
-  
+
   // power on transmitter
   digitalWrite(m_transmitterPowerPin, HIGH);
   delay(60); // wait 60ms for transmitter to get ready
-  
+
   digitalWrite(m_transmitterPin, LOW);
-  delayMicroseconds(2000); 
-    
+  delayMicroseconds(2000);
+
   for (i=0; i < OSV3_PCR800_PACKET_LEN; i++)
   {
     manchesterEncode(m_packet[i], (i+1 == OSV3_PCR800_PACKET_LEN));
   }
-  
+
   // power off transmitter
   digitalWrite(m_transmitterPowerPin, LOW);
   digitalWrite(m_transmitterPin, LOW);
@@ -166,40 +168,40 @@ void Osv3Pcr800Sensor::manchesterEncode (unsigned char encodeByte, bool lastByte
 
   // due to processing time, the delay shouldn't be a full desired delay time
   const unsigned int shorten = 32;
-  
+
   // bits are transmitted in the order 4 thru 7, then 0 thru 3
-  
+
   for (loopCount = 0; loopCount < 8; loopCount++)
-  {  
+  {
     baseMicros += desiredDelay;
     unsigned long delayMicros = baseMicros - micros();
-    
+
     if (delayMicros > 2*delayMicros)
     {
       // big delay indicates break between packet transmits, reset timing base
       baseMicros = micros();
     }
-    else if (delayMicros > 0) 
+    else if (delayMicros > 0)
     {
-      delayMicroseconds(delayMicros); 
+      delayMicroseconds(delayMicros);
     }
-    
+
     if ((encodeByte & mask) == 0)
     {
       // a zero bit is represented by an off-to-on transition in the RF signal
       digitalWrite(m_transmitterPin, LOW);
-      delayMicroseconds(desiredDelay - shorten); 
+      delayMicroseconds(desiredDelay - shorten);
       digitalWrite(m_transmitterPin, HIGH);
-      
+
       // no long delay after last low to high transistion as no more data follows
-      if (lastByte) delayMicroseconds(desiredDelay); 
+      if (lastByte) delayMicroseconds(desiredDelay);
 
       lastbit = 0;
     }
     else
     {
       digitalWrite(m_transmitterPin, HIGH);
-      delayMicroseconds(desiredDelay - shorten); 
+      delayMicroseconds(desiredDelay - shorten);
       digitalWrite(m_transmitterPin, LOW);
       lastbit = 1;
     }
@@ -215,32 +217,32 @@ void Osv3Pcr800Sensor::manchesterEncode (unsigned char encodeByte, bool lastByte
 
     baseMicros += desiredDelay;
   }
-}  
+}
 
 
 
 // this CRC code is from crc8.c published by Rajiv Chakravorty
 void Osv3Pcr800Sensor::initCrc8(void)
      /*
-      * Should be called before any other crc function.  
+      * Should be called before any other crc function.
       */
 {
   int i,j;
   unsigned char crc;
-  
-  if (!m_madeTable) 
+
+  if (!m_madeTable)
   {
-    for (i=0; i<256; i++) 
+    for (i=0; i<256; i++)
     {
       crc = i;
       for (j=0; j<8; j++)
       {
         crc = (crc << 1) ^ ((crc & 0x80) ? DI : 0);
       }
-      
+
       m_crc8Table[i] = crc & 0xFF;
     }
-    
+
     m_madeTable = true;
   }
 }

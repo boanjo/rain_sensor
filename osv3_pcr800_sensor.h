@@ -6,9 +6,9 @@
 // class also contains the timing for each THGR810 channel
 #define PREAMBLE_NIBBLES                6
 #define SYNCH_NIBBLES                   1
-#define PAYLOAD_STARTING_NIBBLE         PREAMBLE_NIBBLES + SYNCH_NIBBLES 
+#define PAYLOAD_STARTING_NIBBLE         PREAMBLE_NIBBLES + SYNCH_NIBBLES
 #define PAYLOAD_NIBBLES                20  // Including CHECKSUM NIBBLES
-#define CHECKSUM_NIBBLES                2     
+#define CHECKSUM_NIBBLES                2
 #define OSV3_PCR800_PACKET_LEN         15
 
 // crc constants
@@ -25,10 +25,10 @@ class Osv3Pcr800Sensor
     unsigned char m_packet[OSV3_PCR800_PACKET_LEN];
     int m_channel;
     unsigned int m_rollingCode;
- 
+
     int m_transmitterPin;
     int m_transmitterPowerPin;
- 
+
     // having a CRC table in each sensor isn't the most efficient...
     unsigned char m_crc8Table[256];     /* 8-bit table */
     int m_madeTable;
@@ -39,13 +39,13 @@ class Osv3Pcr800Sensor
     void initCrc8(void);
     void crc8(unsigned char *crc, unsigned char m);
 
-    
+
   public:
     Osv3Pcr800Sensor(int channel, int transmitterPin, int transmitterPowerPin);
     ~Osv3Pcr800Sensor();
-    
-    void buildAndSendPacket(const unsigned int countPerHour, const unsigned long totalCount, const unsigned long batteryPercent);
-  
+
+    void buildAndSendPacket(const unsigned int countPerHour, const unsigned long totalCount, const bool batteryLow);
+
 };
 
 #endif
