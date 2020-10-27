@@ -8,22 +8,16 @@
 #include "Arduino.h"
 #include "osv3_pcr800_sensor.h"
 #include "math.h"
-Osv3Pcr800Sensor::Osv3Pcr800Sensor(int channel, int transmitterPin, int transmitterPowerPin)
+Osv3Pcr800Sensor::Osv3Pcr800Sensor(int transmitterPin)
 {
-  m_channel = channel;
   m_madeTable = false;
   m_transmitterPin = transmitterPin;
-  m_transmitterPowerPin = transmitterPowerPin;
 
   // new rolling code with every reset
   randomSeed(analogRead(1)); // analog pin one used as source of noise for random seed
   m_rollingCode = random(0x01, 0xFE);
 
   pinMode(m_transmitterPin, OUTPUT);
-  pinMode(m_transmitterPowerPin, OUTPUT);
-
-  digitalWrite(m_transmitterPowerPin, LOW);
-
   initCrc8();
 }
 
@@ -31,7 +25,9 @@ Osv3Pcr800Sensor::~Osv3Pcr800Sensor()
 {
 }
 
-void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const unsigned long totalRain, const bool batteryLow)
+
+
+void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int channel, const unsigned int rainRate, const unsigned long totalRain, const bool batteryLow, const unsigned long rollingCode)
 {
   // Nibbles are sent LSB first
 
@@ -52,11 +48,12 @@ void Osv3Pcr800Sensor::buildAndSendPacket(const unsigned int rainRate, const uns
   m_packet[5] = 0x40;
 
   // nibble 4 Channel 1 thru 15
-  m_packet[5] |= m_channel;
+  m_packet[5] |= channel;
 
   // nibbles 5..6 Rolling Code Value changes randomly every time the sensor is reset
   // I use the battery level instead
-  m_packet[6] = m_rollingCode;
+  m_packet[6] = rollingCode << 4;
+  m_packet[6] |= rollingCode >> 4;
 
   // nibble 7 Flags - battery status (Nibble value 0x4 indicates LOW)
   if(batteryLow)
@@ -136,10 +133,6 @@ void Osv3Pcr800Sensor::sendData(void)
 {
    int i;
 
-  // power on transmitter
-  digitalWrite(m_transmitterPowerPin, HIGH);
-  delay(60); // wait 60ms for transmitter to get ready
-
   digitalWrite(m_transmitterPin, LOW);
   delayMicroseconds(2000);
 
@@ -148,8 +141,6 @@ void Osv3Pcr800Sensor::sendData(void)
     manchesterEncode(m_packet[i], (i+1 == OSV3_PCR800_PACKET_LEN));
   }
 
-  // power off transmitter
-  digitalWrite(m_transmitterPowerPin, LOW);
   digitalWrite(m_transmitterPin, LOW);
 }
 
@@ -259,5 +250,3 @@ void Osv3Pcr800Sensor::crc8(unsigned char *crc, unsigned char m)
   *crc = m_crc8Table[(*crc) ^ m];
   *crc &= 0xFF;
 }
-
-

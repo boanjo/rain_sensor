@@ -15,19 +15,15 @@
 #define GP  0x107   /* x^8 + x^2 + x + 1 */
 #define DI  0x07
 
-// can't nicely init array inside class... cheating and putting it here
-const int m_secondsBetweenTransmits[] = {53, 59, 61, 67, 71, 79, 83, 87, 91, 93};
 
 class Osv3Pcr800Sensor
 {
   private:
     // channel effects packet tx frequency
     unsigned char m_packet[OSV3_PCR800_PACKET_LEN];
-    int m_channel;
     unsigned int m_rollingCode;
 
     int m_transmitterPin;
-    int m_transmitterPowerPin;
 
     // having a CRC table in each sensor isn't the most efficient...
     unsigned char m_crc8Table[256];     /* 8-bit table */
@@ -41,12 +37,11 @@ class Osv3Pcr800Sensor
 
 
   public:
-    Osv3Pcr800Sensor(int channel, int transmitterPin, int transmitterPowerPin);
+    Osv3Pcr800Sensor(int transmitterPin);
     ~Osv3Pcr800Sensor();
 
-    void buildAndSendPacket(const unsigned int countPerHour, const unsigned long totalCount, const bool batteryLow);
+    void buildAndSendPacket(const unsigned int channel, const unsigned int countPerHour, const unsigned long totalCount, const bool batteryLow, const unsigned long rollingCode);
 
 };
 
 #endif
-
