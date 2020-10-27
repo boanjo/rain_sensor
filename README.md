@@ -7,17 +7,17 @@ The Hardware is a tipping bucket from Rainwise 111. It's pretty pricy (~150USD i
 
 ### Here are some samples of the prototyping
 
-![Schematic of rain_sensor hardware](https://github.com/epkboan/boanjo.github.io/blob/master/rain_sensor_schem.png?raw=true "Schematic: rain_sensor Hardware")
+![Schematic of rain_sensor hardware](https://github.com/boanjo/boanjo.github.io/blob/master/rain_sensor_schem.png?raw=true "Schematic: rain_sensor Hardware")
 
-![Breadboard of rain_sensor](https://github.com/epkboan/boanjo.github.io/blob/master/rain_sensor_bb.png?raw=true "Breadboard: rain_sensor Hardware")
+![Breadboard of rain_sensor](https://github.com/boanjo/boanjo.github.io/blob/master/rain_sensor_bb.png?raw=true "Breadboard: rain_sensor Hardware")
 
 ### Here is the final product
 
-![rain_sensor](https://github.com/epkboan/boanjo.github.io/blob/master/rain_sensor_1.JPG?raw=true)
+![rain_sensor](https://github.com/boanjo/boanjo.github.io/blob/master/rain_sensor_1.JPG?raw=true)
 
-![rain_sensor](https://github.com/epkboan/boanjo.github.io/blob/master/rain_sensor_2.JPG?raw=true)
+![rain_sensor](https://github.com/boanjo/boanjo.github.io/blob/master/rain_sensor_2.JPG?raw=true)
 
-![rain_sensor](https://github.com/epkboan/boanjo.github.io/blob/master/rain_sensor_3.JPG?raw=true)
+![rain_sensor](https://github.com/boanjo/boanjo.github.io/blob/master/rain_sensor_3.JPG?raw=true)
 
-![rain_sensor](https://github.com/epkboan/boanjo.github.io/blob/master/rain_sensor_4.JPG?raw=true)
+![rain_sensor](https://github.com/boanjo/boanjo.github.io/blob/master/rain_sensor_4.JPG?raw=true)
 
